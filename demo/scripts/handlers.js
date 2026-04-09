@@ -146,6 +146,10 @@ function handleClick(event) {
 
   if (action === "reset-exam-filters") {
     appState.examFilters = { query: "", status: "all", teacherId: "all" };
+    renderApp();
+    return;
+  }
+
   if (action === "reset-question-filters") {
     appState.questionFilters = { query: "", type: "all", difficulty: "all", status: "all" };
     renderApp();
@@ -207,6 +211,17 @@ function handleClick(event) {
 
     setFlash(`你已提交《${exam.title}》。`, "success");
     navigate(`/exams/${exam.id}`);
+    return;
+  }
+
+  if (action === "submit-question-review") {
+    handleSubmitQuestionReview(target.dataset.questionId);
+    return;
+  }
+
+  if (action === "clone-sample-question") {
+    handleCloneSampleQuestion();
+    return;
   }
 }
 
@@ -235,48 +250,6 @@ function handleExamFormSubmit(form) {
     navigate("/exams");
     return;
   }
-  if (action === "submit-question-review") {
-    handleSubmitQuestionReview(target.dataset.questionId);
-    return;
-  }
-
-  if (action === "clone-sample-question") {
-    handleCloneSampleQuestion();
-  }
-}
-
-function handleQuestionFormSubmit(form) {
-  const currentSession = getCurrentSession();
-  const users = getUsers();
-  const currentUser = getCurrentUserFromSession(currentSession, users);
-
-  if (!currentSession || !currentUser) {
-    setFlash("登录状态已失效，请重新登录。", "warning");
-    navigate("/login");
-    return;
-  }
-
-  if (!hasPermission({ permissions: getPermissionsForRole(currentSession.currentRole) }, "question:create")) {
-    showToast("当前角色无权维护试题。", "warning");
-    return;
-  }
-
-  const editingId = form.dataset.questionId || "";
-  const questions = getQuestions();
-  const editingTarget = editingId ? questions.find((item) => item.id === editingId) ?? null : null;
-
-  if (editingId && !editingTarget) {
-    showToast("目标试题不存在。", "danger");
-    navigate("/question-bank");
-    return;
-  }
-
-  if (editingTarget && !canManageQuestionByScope(currentSession.currentRole, currentUser, editingTarget)) {
-    showToast("当前角色不能编辑该试题。", "warning");
-    navigate("/question-bank");
-    return;
-  }
-
   const formData = new FormData(form);
   const title = String(formData.get("title") || "").trim();
   const description = String(formData.get("description") || "").trim();
@@ -384,62 +357,39 @@ function handleQuestionFormSubmit(form) {
   navigate(editingExam ? `/exams/${savedExam.id}` : "/exams");
 }
 
-function handleExamAssignmentSubmit(form) {
+function handleQuestionFormSubmit(form) {
   const currentSession = getCurrentSession();
   const users = getUsers();
   const currentUser = getCurrentUserFromSession(currentSession, users);
-  const examId = form.dataset.examId || "";
 
-  if (!currentSession || !currentUser || !["Teacher", "Admin"].includes(currentSession.currentRole)) {
-    showToast("当前角色无权维护考试分配。", "warning");
+  if (!currentSession || !currentUser) {
+    setFlash("登录状态已失效，请重新登录。", "warning");
+    navigate("/login");
     return;
   }
 
-  const exams = getExams();
-  const exam = exams.find((item) => item.id === examId);
-
-  if (!exam) {
-    showToast("考试任务不存在。", "warning");
-    navigate("/exams");
+  if (!hasPermission({ permissions: getPermissionsForRole(currentSession.currentRole) }, "question:create")) {
+    showToast("当前角色无权维护试题。", "warning");
     return;
   }
 
-  if (currentSession.currentRole === "Teacher" && exam.createdBy !== currentUser.id) {
-    showToast("只能维护自己创建的考试任务。", "warning");
-    navigate("/exams");
+  const editingId = form.dataset.questionId || "";
+  const questions = getQuestions();
+  const editingTarget = editingId ? questions.find((item) => item.id === editingId) ?? null : null;
+
+  if (editingId && !editingTarget) {
+    showToast("目标试题不存在。", "danger");
+    navigate("/question-bank");
+    return;
+  }
+
+  if (editingTarget && !canManageQuestionByScope(currentSession.currentRole, currentUser, editingTarget)) {
+    showToast("当前角色不能编辑该试题。", "warning");
+    navigate("/question-bank");
     return;
   }
 
   const formData = new FormData(form);
-  const selectedIds = Array.from(new Set(formData.getAll("studentIds").map((value) => String(value))));
-  const validStudentIds = getManagedStudentsForTeacher(exam.createdBy, users)
-    .filter((student) => student.status === "active")
-    .map((student) => student.id);
-  const nextAssigned = selectedIds.filter((id) => validStudentIds.includes(id));
-
-  const nextExams = exams.map((item) =>
-    item.id === exam.id
-      ? {
-          ...item,
-          assignedStudentIds: nextAssigned,
-          updatedAt: new Date().toISOString(),
-        }
-      : item
-  );
-
-  saveExams(nextExams);
-  appendAuditLog({
-    userId: currentUser.id,
-    action: "assign:exam",
-    targetId: exam.id,
-    detail: `${currentUser.name}更新了考试任务 ${exam.title} 的分配名单，共 ${nextAssigned.length} 人。`,
-  });
-
-  showToast("考试分配已保存。", "success");
-  renderApp();
-}
-
-function handlePublishExam(examId) {
   const type = String(formData.get("type") || "single").trim();
   const stem = String(formData.get("stem") || "").trim();
   const answer = String(formData.get("answer") || "").trim();
@@ -554,6 +504,123 @@ function handlePublishExam(examId) {
   navigate(`/question-bank/${savedQuestion.id}`);
 }
 
+function handleExamAssignmentSubmit(form) {
+  const currentSession = getCurrentSession();
+  const users = getUsers();
+  const currentUser = getCurrentUserFromSession(currentSession, users);
+  const examId = form.dataset.examId || "";
+
+  if (!currentSession || !currentUser || !["Teacher", "Admin"].includes(currentSession.currentRole)) {
+    showToast("当前角色无权维护考试分配。", "warning");
+    return;
+  }
+
+  const exams = getExams();
+  const exam = exams.find((item) => item.id === examId);
+
+  if (!exam) {
+    showToast("考试任务不存在。", "warning");
+    navigate("/exams");
+    return;
+  }
+
+  if (currentSession.currentRole === "Teacher" && exam.createdBy !== currentUser.id) {
+    showToast("只能维护自己创建的考试任务。", "warning");
+    navigate("/exams");
+    return;
+  }
+
+  const formData = new FormData(form);
+  const selectedIds = Array.from(new Set(formData.getAll("studentIds").map((value) => String(value))));
+  const validStudentIds = getManagedStudentsForTeacher(exam.createdBy, users)
+    .filter((student) => student.status === "active")
+    .map((student) => student.id);
+  const nextAssigned = selectedIds.filter((id) => validStudentIds.includes(id));
+
+  const nextExams = exams.map((item) =>
+    item.id === exam.id
+      ? {
+          ...item,
+          assignedStudentIds: nextAssigned,
+          updatedAt: new Date().toISOString(),
+        }
+      : item
+  );
+
+  saveExams(nextExams);
+  appendAuditLog({
+    userId: currentUser.id,
+    action: "assign:exam",
+    targetId: exam.id,
+    detail: `${currentUser.name}更新了考试任务 ${exam.title} 的分配名单，共 ${nextAssigned.length} 人。`,
+  });
+
+  showToast("考试分配已保存。", "success");
+  renderApp();
+}
+
+function handlePublishExam(examId) {
+  const currentSession = getCurrentSession();
+  const users = getUsers();
+  const currentUser = getCurrentUserFromSession(currentSession, users);
+
+  if (!currentSession || !currentUser || !["Teacher", "Admin"].includes(currentSession.currentRole)) {
+    showToast("当前角色无权发布考试。", "warning");
+    return;
+  }
+
+  const exams = getExams();
+  const target = exams.find((exam) => exam.id === examId);
+
+  if (!target) {
+    showToast("考试任务不存在。", "warning");
+    return;
+  }
+
+  if (currentSession.currentRole === "Teacher" && target.createdBy !== currentUser.id) {
+    showToast("只能发布自己创建的考试任务。", "warning");
+    return;
+  }
+
+  if (target.status === "published") {
+    showToast("该考试已经发布。", "info");
+    return;
+  }
+
+  if (!target.assignedStudentIds.length) {
+    showToast("请先分配学生后再发布考试。", "warning");
+    return;
+  }
+
+  if (!target.startAt || !target.endAt || new Date(target.endAt) <= new Date(target.startAt)) {
+    showToast("考试时间窗无效，无法发布。", "warning");
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const nextExams = exams.map((exam) =>
+    exam.id === target.id
+      ? {
+          ...exam,
+          status: "published",
+          publishedAt: now,
+          updatedAt: now,
+        }
+      : exam
+  );
+
+  saveExams(nextExams);
+  appendAuditLog({
+    userId: currentUser.id,
+    action: "publish:exam",
+    targetId: target.id,
+    detail: `${currentUser.name}发布了考试任务 ${target.title}。`,
+  });
+
+  showToast("考试已发布。", "success");
+  renderApp();
+}
+
 function handleSubmitQuestionReview(questionId) {
   const currentSession = getCurrentSession();
   const users = getUsers();
@@ -611,38 +678,6 @@ function handleQuestionReviewSubmit(form) {
   const users = getUsers();
   const currentUser = getCurrentUserFromSession(currentSession, users);
 
-  if (!currentSession || !currentUser || !["Teacher", "Admin"].includes(currentSession.currentRole)) {
-    showToast("当前角色无权发布考试。", "warning");
-    return;
-  }
-
-  const exams = getExams();
-  const target = exams.find((exam) => exam.id === examId);
-
-  if (!target) {
-    showToast("考试任务不存在。", "warning");
-    return;
-  }
-
-  if (currentSession.currentRole === "Teacher" && target.createdBy !== currentUser.id) {
-    showToast("只能发布自己创建的考试任务。", "warning");
-    return;
-  }
-
-  if (target.status === "published") {
-    showToast("该考试已经发布。", "info");
-    return;
-  }
-
-  if (!target.assignedStudentIds.length) {
-    showToast("请先分配学生后再发布考试。", "warning");
-    return;
-  }
-
-  if (!target.startAt || !target.endAt || new Date(target.endAt) <= new Date(target.startAt)) {
-    showToast("考试时间窗无效，无法发布。", "warning");
-    return;
-  }
   if (!currentSession || !currentUser) {
     return;
   }
@@ -663,54 +698,30 @@ function handleQuestionReviewSubmit(form) {
   }
 
   const questions = getQuestions();
-  const target = questions.find((item) => item.id === questionId);
+  const questionTarget = questions.find((item) => item.id === questionId);
 
-  if (!target) {
+  if (!questionTarget) {
     showToast("目标试题不存在。", "danger");
     return;
   }
 
-  if (target.status !== "pending") {
+  if (questionTarget.status !== "pending") {
     showToast("仅待审核试题可执行审核操作。", "warning");
     return;
   }
 
   const now = new Date().toISOString();
-  const nextExams = exams.map((exam) =>
-    exam.id === target.id
-      ? {
-          ...exam,
-          status: "published",
-          publishedAt: now,
-          updatedAt: now,
-        }
-      : exam
-  );
-
-  saveExams(nextExams);
-  appendAuditLog({
-    userId: currentUser.id,
-    action: "publish:exam",
-    targetId: target.id,
-    detail: `${currentUser.name}发布了考试任务 ${target.title}。`,
-  });
-
-  showToast("考试已发布。", "success");
-  renderApp();
-}
-
-function handleDeleteExam(examId) {
   const nextQuestions = questions.map((item) =>
     item.id === questionId
       ? {
-        ...item,
-        status: result,
-        updatedAt: now,
-        reviewerId: currentSession.userId,
-        reviewedAt: now,
-        reviewComment: comment,
-        version: (item.version || 1) + 1,
-      }
+          ...item,
+          status: result,
+          updatedAt: now,
+          reviewerId: currentSession.userId,
+          reviewedAt: now,
+          reviewComment: comment,
+          version: (item.version || 1) + 1,
+        }
       : item
   );
 
@@ -721,11 +732,12 @@ function handleDeleteExam(examId) {
     targetId: questionId,
     detail: `${currentUser.name}${result === "approved" ? "通过" : "驳回"}了试题审核。`,
   });
+
   showToast(`审核已提交：${result === "approved" ? "通过" : "驳回"}。`, "success");
   renderApp();
 }
 
-function handleQuestionImportSubmit(form) {
+function handleDeleteExam(examId) {
   const currentSession = getCurrentSession();
   const users = getUsers();
   const currentUser = getCurrentUserFromSession(currentSession, users);
@@ -765,6 +777,13 @@ function handleQuestionImportSubmit(form) {
   }
 
   renderApp();
+}
+
+function handleQuestionImportSubmit(form) {
+  const currentSession = getCurrentSession();
+  const users = getUsers();
+  const currentUser = getCurrentUserFromSession(currentSession, users);
+
   if (!currentSession || !currentUser) {
     return;
   }
