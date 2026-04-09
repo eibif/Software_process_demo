@@ -3,6 +3,7 @@
   auditLogs: "sp_demo_audit_logs",
   activeSessions: "sp_demo_active_sessions",
   exams: "sp_demo_exams",
+  questions: "sp_demo_questions",
 };
 
 const SESSION_KEYS = {
@@ -33,7 +34,36 @@ const navMeta = {
   dashboard: { label: "首页", icon: "首" },
   users: { label: "用户管理", icon: "户" },
   exams: { label: "考试管理", icon: "考" },
+  questionBank: { label: "题库管理", icon: "题" },
   profile: { label: "个人中心", icon: "我" },
+};
+
+const questionTypeMeta = {
+  single: "单选题",
+  multiple: "多选题",
+  judge: "判断题",
+  blank: "填空题",
+  short: "简答题",
+  essay: "论述题",
+  coding: "编程题",
+  case: "案例分析题",
+  image: "图片题",
+  audio: "音频题",
+  video: "视频题",
+  upload: "文件上传题",
+};
+
+const questionStatusMeta = {
+  draft: { label: "草稿", tone: "warning" },
+  pending: { label: "待审核", tone: "primary" },
+  approved: { label: "已通过", tone: "success" },
+  rejected: { label: "已驳回", tone: "danger" },
+};
+
+const questionShareScopeMeta = {
+  personal: "个人题库",
+  department: "院系题库",
+  public: "公共题库",
 };
 
 const permissionMap = {
@@ -49,6 +79,11 @@ const permissionMap = {
     "exam:publish",
     "exam:delete",
     "exam:assign",
+    "question:view",
+    "question:create",
+    "question:update",
+    "question:submit",
+    "question:import",
     "profile:view",
     "profile:update",
   ],
@@ -64,6 +99,12 @@ const permissionMap = {
     "exam:publish",
     "exam:delete",
     "exam:assign",
+    "question:view",
+    "question:create",
+    "question:update",
+    "question:submit",
+    "question:import",
+    "question:review",
     "profile:view",
     "profile:update",
   ],
@@ -87,6 +128,12 @@ const appState = {
     query: "",
     status: "all",
     teacherId: "all",
+  },
+  questionFilters: {
+    query: "",
+    type: "all",
+    difficulty: "all",
+    status: "all",
   },
 };
 
@@ -127,6 +174,11 @@ function seedDemoData() {
   const seedExams = createSeedExams();
   const existingExams = readStorage(localStorage, STORAGE_KEYS.exams, null);
   writeStorage(localStorage, STORAGE_KEYS.exams, normalizeExams(existingExams ? mergeSeedExams(existingExams, seedExams) : seedExams));
+
+  
+  const seedQuestions = createSeedQuestions();
+  const existingQuestions = readStorage(localStorage, STORAGE_KEYS.questions, null);
+  writeStorage(localStorage, STORAGE_KEYS.questions, normalizeQuestions(existingQuestions ? mergeSeedQuestions(existingQuestions, seedQuestions) : seedQuestions));
 }
 
 function createSeedExams() {
@@ -352,6 +404,95 @@ function createSeedAuditLogs() {
   ];
 }
 
+function createSeedQuestions() {
+  return [
+    {
+      id: "question-001",
+      type: "single",
+      stem: "在软件需求分析中，通常用于描述用户与系统交互行为的模型是？",
+      options: ["A. 类图", "B. 用例图", "C. 部署图", "D. 组件图"],
+      answer: "B",
+      analysis: "用例图用于表达外部参与者与系统功能之间的关系。",
+      score: 5,
+      difficulty: 2,
+      knowledgePoint: "需求建模",
+      subject: "软件工程",
+      chapter: "需求分析",
+      tags: ["基础", "用例"],
+      estimatedMinutes: 2,
+      status: "approved",
+      version: 2,
+      mediaName: "",
+      language: "",
+      sharedScope: "public",
+      usageCount: 126,
+      correctRate: 0.81,
+      createdBy: "user-teacher-001",
+      reviewerId: "user-admin-001",
+      reviewComment: "题目表述清晰，可用于基础测验。",
+      createdAt: "2026-03-20T10:00:00",
+      updatedAt: "2026-04-06T16:20:00",
+      reviewedAt: "2026-04-06T16:20:00",
+    },
+    {
+      id: "question-002",
+      type: "multiple",
+      stem: "下列哪些属于常见的软件质量属性？",
+      options: ["A. 可维护性", "B. 可用性", "C. 可扩展性", "D. 可传输性"],
+      answer: "A,B,C",
+      analysis: "课程重点通常覆盖可维护性、可用性和可扩展性。",
+      score: 8,
+      difficulty: 3,
+      knowledgePoint: "软件质量",
+      subject: "软件过程与质量",
+      chapter: "质量属性",
+      tags: ["多选", "质量"],
+      estimatedMinutes: 3,
+      status: "pending",
+      version: 1,
+      mediaName: "",
+      language: "",
+      sharedScope: "department",
+      usageCount: 32,
+      correctRate: 0.55,
+      createdBy: "user-teacher-001",
+      reviewerId: "",
+      reviewComment: "",
+      createdAt: "2026-04-08T09:00:00",
+      updatedAt: "2026-04-08T09:00:00",
+      reviewedAt: "",
+    },
+    {
+      id: "question-003",
+      type: "coding",
+      stem: "请使用 Java 实现一个函数，判断字符串是否为回文串。",
+      options: [],
+      answer: "可使用双指针从两端向中间比较字符。",
+      analysis: "重点考察字符串处理与边界条件。",
+      score: 20,
+      difficulty: 4,
+      knowledgePoint: "字符串算法",
+      subject: "程序设计",
+      chapter: "算法基础",
+      tags: ["编程题", "算法"],
+      estimatedMinutes: 12,
+      status: "draft",
+      version: 1,
+      mediaName: "",
+      language: "Java",
+      sharedScope: "personal",
+      usageCount: 0,
+      correctRate: 0,
+      createdBy: "user-teacher-001",
+      reviewerId: "",
+      reviewComment: "",
+      createdAt: "2026-04-09T08:00:00",
+      updatedAt: "2026-04-09T08:00:00",
+      reviewedAt: "",
+    },
+  ];
+}
+
 function mergeSeedUsers(existingUsers, seedUsers) {
   const usedExistingIds = new Set();
 
@@ -407,6 +548,16 @@ function mergeSeedExams(existingExams, seedExams) {
   return [...mergedSeedExams, ...customExams];
 }
 
+function mergeSeedQuestions(existingQuestions, seedQuestions) {
+  const byId = new Map(existingQuestions.map((question) => [question.id, question]));
+  const mergedSeedQuestions = seedQuestions.map((seedQuestion) => ({
+    ...seedQuestion,
+    ...(byId.get(seedQuestion.id) ?? {}),
+  }));
+  const customQuestions = existingQuestions.filter((question) => !seedQuestions.some((seedQuestion) => seedQuestion.id === question.id));
+  return [...mergedSeedQuestions, ...customQuestions].slice(0, 300);
+}
+
 function normalizeUsers(users) {
   return users.map((user) => {
     const fallbackRole = user.primaryRole || user.roles?.[0] || "Student";
@@ -444,6 +595,34 @@ function normalizeExams(exams) {
   }));
 }
 
+function normalizeQuestions(questions) {
+  return questions.map((question) => {
+    const type = questionTypeMeta[question.type] ? question.type : "single";
+    const status = questionStatusMeta[question.status] ? question.status : "draft";
+    const sharedScope = questionShareScopeMeta[question.sharedScope] ? question.sharedScope : "personal";
+
+    return {
+      ...question,
+      type,
+      status,
+      sharedScope,
+      options: Array.isArray(question.options) ? question.options : [],
+      tags: Array.isArray(question.tags) ? question.tags : [],
+      score: Number.isFinite(Number(question.score)) ? Math.max(0, Number(question.score)) : 10,
+      difficulty: Number.isFinite(Number(question.difficulty)) ? Math.min(5, Math.max(1, Number(question.difficulty))) : 3,
+      estimatedMinutes: Number.isFinite(Number(question.estimatedMinutes)) ? Math.max(1, Number(question.estimatedMinutes)) : 3,
+      version: Number.isFinite(Number(question.version)) ? Math.max(1, Number(question.version)) : 1,
+      usageCount: Number.isFinite(Number(question.usageCount)) ? Math.max(0, Number(question.usageCount)) : 0,
+      correctRate: Number.isFinite(Number(question.correctRate)) ? Math.max(0, Math.min(1, Number(question.correctRate))) : 0,
+      reviewComment: question.reviewComment || "",
+      reviewerId: question.reviewerId || "",
+      reviewedAt: question.reviewedAt || "",
+      mediaName: question.mediaName || "",
+      language: question.language || "",
+    };
+  });
+}
+
 function readStorage(storage, key, fallbackValue) {
   try {
     const raw = storage.getItem(key);
@@ -475,6 +654,14 @@ function getAuditLogs() {
 
 function saveAuditLogs(logs) {
   writeStorage(localStorage, STORAGE_KEYS.auditLogs, logs);
+}
+
+function getQuestions() {
+  return readStorage(localStorage, STORAGE_KEYS.questions, []);
+}
+
+function saveQuestions(questions) {
+  writeStorage(localStorage, STORAGE_KEYS.questions, normalizeQuestions(questions));
 }
 
 function getActiveSessions() {
@@ -681,6 +868,13 @@ function resolveRoute(path) {
       allowedRoles: ["Teacher", "Admin"],
     };
   }
+  if (path === "/question-bank") {
+    return {
+      name: "question-bank",
+      requiresAuth: true,
+      allowedRoles: ["Teacher", "Admin"],
+    };
+  }
 
   const examTakeMatch = path.match(/^\/exams\/([^/]+)\/take$/);
 
@@ -712,6 +906,36 @@ function resolveRoute(path) {
       requiresAuth: true,
       allowedRoles: ["Teacher", "Admin", "Student"],
       params: { examId: examDetailMatch[1] },
+    };
+  }
+
+  if (path === "/question-bank/new") {
+    return {
+      name: "question-create",
+      requiresAuth: true,
+      allowedRoles: ["Teacher", "Admin"],
+    };
+  }
+
+  const questionEditMatch = path.match(/^\/question-bank\/([^/]+)\/edit$/);
+
+  if (questionEditMatch) {
+    return {
+      name: "question-edit",
+      requiresAuth: true,
+      allowedRoles: ["Teacher", "Admin"],
+      params: { questionId: questionEditMatch[1] },
+    };
+  }
+
+  const questionDetailMatch = path.match(/^\/question-bank\/([^/]+)$/);
+
+  if (questionDetailMatch) {
+    return {
+      name: "question-detail",
+      requiresAuth: true,
+      allowedRoles: ["Teacher", "Admin"],
+      params: { questionId: questionDetailMatch[1] },
     };
   }
 
@@ -867,6 +1091,27 @@ function getVisibleUsersForRole(role, currentUser, users) {
   return [currentUser];
 }
 
+function getVisibleQuestionsForRole(role, currentUser, questions) {
+  if (!currentUser) {
+    return [];
+  }
+
+  if (role === "Admin") {
+    return [...questions].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  }
+
+  if (role === "Teacher") {
+    return questions
+      .filter(
+        (question) =>
+          question.createdBy === currentUser.id || question.sharedScope === "public" || question.sharedScope === "department"
+      )
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  }
+
+  return [];
+}
+
 function getManageableUsersForRole(role, currentUser, users) {
   if (!currentUser) {
     return [];
@@ -910,6 +1155,38 @@ function canManageUserByScope(role, currentUser, targetUser) {
 
   if (role === "Teacher") {
     return isTeacherManagedStudent(targetUser, currentUser.id);
+  }
+
+  return false;
+}
+
+function canViewQuestionByScope(role, currentUser, question) {
+  if (!currentUser || !question) {
+    return false;
+  }
+
+  if (role === "Admin") {
+    return true;
+  }
+
+  if (role === "Teacher") {
+    return question.createdBy === currentUser.id || question.sharedScope === "public" || question.sharedScope === "department";
+  }
+
+  return false;
+}
+
+function canManageQuestionByScope(role, currentUser, question) {
+  if (!currentUser || !question) {
+    return false;
+  }
+
+  if (role === "Admin") {
+    return true;
+  }
+
+  if (role === "Teacher") {
+    return question.createdBy === currentUser.id;
   }
 
   return false;
@@ -983,6 +1260,25 @@ function filterUsers(users, filters) {
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 }
 
+function filterQuestions(questions, filters) {
+  return [...questions]
+    .filter((question) => {
+      const query = String(filters.query || "").trim().toLowerCase();
+
+      if (!query) {
+        return true;
+      }
+
+      return [question.stem, question.knowledgePoint, question.subject, question.chapter, ...(question.tags || [])]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+    })
+    .filter((question) => (filters.type === "all" ? true : question.type === filters.type))
+    .filter((question) => (filters.status === "all" ? true : question.status === filters.status))
+    .filter((question) => (filters.difficulty === "all" ? true : String(question.difficulty) === String(filters.difficulty)))
+    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+}
+
 function getActionLabel(action) {
   const labels = {
     "create:user": "创建用户",
@@ -1000,14 +1296,75 @@ function getActionLabel(action) {
     "publish:exam": "发布考试任务",
     "delete:exam": "删除考试任务",
     "assign:exam": "维护考试分配",
+    "create:question": "创建试题",
+    "update:question": "更新试题",
+    "submit:question": "提交试题审核",
+    "review:question": "审核试题",
+    "import:question": "批量导入试题",
+    "clone:question": "克隆试题",
   };
 
   return labels[action] ?? action;
 }
 
+function getQuestionTypeOptions() {
+  return Object.entries(questionTypeMeta).map(([value, label]) => ({ value, label }));
+}
+
+function getQuestionTypeFilterOptions() {
+  return [{ value: "all", label: "全部题型" }, ...getQuestionTypeOptions()];
+}
+
+function getDifficultyFilterOptions() {
+  return [
+    { value: "all", label: "全部难度" },
+    { value: "1", label: "Lv.1" },
+    { value: "2", label: "Lv.2" },
+    { value: "3", label: "Lv.3" },
+    { value: "4", label: "Lv.4" },
+    { value: "5", label: "Lv.5" },
+  ];
+}
+
+function getQuestionStatusFilterOptions() {
+  return [{ value: "all", label: "全部状态" }].concat(
+    Object.entries(questionStatusMeta).map(([value, meta]) => ({ value, label: meta.label }))
+  );
+}
+
+function getQuestionStatusLabel(status) {
+  return questionStatusMeta[status]?.label ?? status;
+}
+
+function getQuestionStatusTone(status) {
+  return questionStatusMeta[status]?.tone ?? "primary";
+}
+
+function getQuestionTypeLabel(type) {
+  return questionTypeMeta[type] ?? type;
+}
+
+function getQuestionShareScopeOptions() {
+  return Object.entries(questionShareScopeMeta).map(([value, label]) => ({ value, label }));
+}
+
+function getQuestionShareScopeLabel(scope) {
+  return questionShareScopeMeta[scope] ?? scope;
+}
+
+function getUserNameById(userId, users) {
+  if (!userId) {
+    return "";
+  }
+
+  return users.find((user) => user.id === userId)?.name ?? "";
+}
+
 function createRenderContext({ route, session, currentUser, users, flash }) {
   const visibleUsers = getVisibleUsersForRole(session.currentRole, currentUser, users);
   const manageableUsers = getManageableUsersForRole(session.currentRole, currentUser, users);
+  const questions = getQuestions();
+  const visibleQuestions = getVisibleQuestionsForRole(session.currentRole, currentUser, questions);
 
   return {
     route,
@@ -1015,7 +1372,9 @@ function createRenderContext({ route, session, currentUser, users, flash }) {
     currentUser,
     users,
     exams: getExams(),
+    questions,
     visibleUsers,
+    visibleQuestions,
     manageableUsers,
     auditLogs: getAuditLogs(),
     role: session.currentRole,
