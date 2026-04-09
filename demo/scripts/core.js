@@ -1,0 +1,799 @@
+﻿const STORAGE_KEYS = {
+  users: "sp_demo_users",
+  auditLogs: "sp_demo_audit_logs",
+  activeSessions: "sp_demo_active_sessions",
+};
+
+const SESSION_KEYS = {
+  instanceId: "sp_demo_instance_id",
+  currentSession: "sp_demo_current_session",
+  flash: "sp_demo_flash_message",
+};
+
+const roleLabels = {
+  Student: "学生",
+  Teacher: "教师",
+  Admin: "管理员",
+};
+
+const statusLabels = {
+  active: "正常",
+  locked: "已锁定",
+  disabled: "已冻结",
+};
+
+const statusTones = {
+  active: "success",
+  locked: "warning",
+  disabled: "danger",
+};
+
+const navMeta = {
+  dashboard: { label: "首页", icon: "首" },
+  users: { label: "用户管理", icon: "户" },
+  profile: { label: "个人中心", icon: "我" },
+};
+
+const permissionMap = {
+  Student: ["profile:view", "profile:update"],
+  Teacher: [
+    "user:view",
+    "user:create",
+    "user:update",
+    "user:freeze",
+    "profile:view",
+    "profile:update",
+  ],
+  Admin: [
+    "user:view",
+    "user:create",
+    "user:update",
+    "user:freeze",
+    "role:assign",
+    "profile:view",
+    "profile:update",
+  ],
+};
+
+const demoAccounts = [
+  { role: "管理员账号", loginName: "admin01", password: "Demo12345" },
+  { role: "教师账号", loginName: "teacher01", password: "Demo12345" },
+  { role: "学生账号", loginName: "2026001", password: "Demo12345" },
+  { role: "学生账号", loginName: "2026015", password: "Demo12345" },
+  { role: "多角色账号", loginName: "duanxun", password: "Demo12345" },
+  { role: "锁定账号", loginName: "teacher-lock", password: "Demo12345" },
+];
+
+const appState = {
+  userFilters: {
+    query: "",
+    role: "all",
+    status: "all",
+  },
+};
+
+let appRoot = null;
+let toastRoot = null;
+let instanceId = null;
+
+function initializeRuntimeRefs() {
+  appRoot = document.getElementById("app");
+  toastRoot = document.getElementById("toast-root");
+  instanceId = ensureSessionValue(SESSION_KEYS.instanceId, createId("tab"));
+}
+
+function ensureSessionValue(key, fallbackValue) {
+  const existing = sessionStorage.getItem(key);
+
+  if (existing) {
+    return existing;
+  }
+
+  sessionStorage.setItem(key, fallbackValue);
+  return fallbackValue;
+}
+
+function seedDemoData() {
+  const seedUsers = createSeedUsers();
+  const existingUsers = readStorage(localStorage, STORAGE_KEYS.users, null);
+  writeStorage(localStorage, STORAGE_KEYS.users, existingUsers ? mergeSeedUsers(existingUsers, seedUsers) : seedUsers);
+
+  const seedLogs = createSeedAuditLogs();
+  const existingLogs = readStorage(localStorage, STORAGE_KEYS.auditLogs, null);
+  writeStorage(localStorage, STORAGE_KEYS.auditLogs, existingLogs ? mergeSeedAuditLogs(existingLogs, seedLogs) : seedLogs);
+
+  if (!localStorage.getItem(STORAGE_KEYS.activeSessions)) {
+    writeStorage(localStorage, STORAGE_KEYS.activeSessions, {});
+  }
+}
+
+function createSeedUsers() {
+  return [
+    {
+      id: "user-admin-001",
+      loginName: "admin01",
+      password: "Demo12345",
+      name: "沈卓",
+      roles: ["Admin"],
+      primaryRole: "Admin",
+      email: "shenzhuo@examcloud.edu.cn",
+      phone: "13800008880",
+      classId: "",
+      department: "平台运营中心",
+      advisorId: "",
+      status: "active",
+      lastLoginAt: "2026-04-09T08:30:00",
+      createdAt: "2026-02-10T09:00:00",
+      updatedAt: "2026-04-09T08:30:00",
+    },
+    {
+      id: "user-teacher-001",
+      loginName: "teacher01",
+      password: "Demo12345",
+      name: "林慧",
+      roles: ["Teacher"],
+      primaryRole: "Teacher",
+      email: "linhui@examcloud.edu.cn",
+      phone: "13900003218",
+      classId: "",
+      department: "软件工程教研室",
+      advisorId: "",
+      status: "active",
+      lastLoginAt: "2026-04-08T17:20:00",
+      createdAt: "2026-02-26T14:00:00",
+      updatedAt: "2026-04-08T17:20:00",
+    },
+    {
+      id: "user-student-001",
+      loginName: "2026001",
+      password: "Demo12345",
+      name: "李晴",
+      roles: ["Student"],
+      primaryRole: "Student",
+      email: "liqing@examcloud.edu.cn",
+      phone: "13800001231",
+      classId: "软件2301",
+      department: "计算机学院",
+      advisorId: "user-teacher-001",
+      status: "active",
+      lastLoginAt: "2026-04-08T09:40:00",
+      createdAt: "2026-03-12T10:00:00",
+      updatedAt: "2026-04-07T21:30:00",
+    },
+    {
+      id: "user-student-002",
+      loginName: "2026015",
+      password: "Demo12345",
+      name: "许然",
+      roles: ["Student"],
+      primaryRole: "Student",
+      email: "xuran@examcloud.edu.cn",
+      phone: "13800005617",
+      classId: "电子信息专硕2401",
+      department: "信息工程学院",
+      advisorId: "user-teacher-001",
+      status: "active",
+      lastLoginAt: "2026-04-07T14:15:00",
+      createdAt: "2026-03-18T09:30:00",
+      updatedAt: "2026-04-07T14:15:00",
+    },
+    {
+      id: "user-student-disabled",
+      loginName: "2026999",
+      password: "Demo12345",
+      name: "唐雨",
+      roles: ["Student"],
+      primaryRole: "Student",
+      email: "tangyu@examcloud.edu.cn",
+      phone: "13500004711",
+      classId: "软件2202",
+      department: "计算机学院",
+      advisorId: "user-teacher-001",
+      status: "disabled",
+      lastLoginAt: "2026-03-18T11:20:00",
+      createdAt: "2026-02-21T08:30:00",
+      updatedAt: "2026-04-03T16:00:00",
+    },
+    {
+      id: "user-multi-001",
+      loginName: "duanxun",
+      password: "Demo12345",
+      name: "段勋",
+      roles: ["Teacher", "Student"],
+      primaryRole: "Teacher",
+      email: "duanxun@examcloud.edu.cn",
+      phone: "13700006788",
+      classId: "研究生实验班",
+      department: "智能系统实验室",
+      advisorId: "",
+      status: "active",
+      lastLoginAt: "2026-04-06T18:10:00",
+      createdAt: "2026-02-18T09:20:00",
+      updatedAt: "2026-04-06T18:10:00",
+    },
+    {
+      id: "user-teacher-locked",
+      loginName: "teacher-lock",
+      password: "Demo12345",
+      name: "周岳",
+      roles: ["Teacher"],
+      primaryRole: "Teacher",
+      email: "zhouyue@examcloud.edu.cn",
+      phone: "13600007881",
+      classId: "",
+      department: "考试管理中心",
+      advisorId: "",
+      status: "locked",
+      lastLoginAt: "2026-03-30T15:00:00",
+      createdAt: "2026-03-01T15:00:00",
+      updatedAt: "2026-04-01T08:40:00",
+    },
+  ];
+}
+
+function createSeedAuditLogs() {
+  return [
+    {
+      id: "log-001",
+      userId: "user-admin-001",
+      action: "create:user",
+      targetId: "user-teacher-001",
+      timestamp: "2026-02-26T14:00:00",
+      detail: "管理员创建了教师账号 teacher01。",
+    },
+    {
+      id: "log-002",
+      userId: "user-teacher-001",
+      action: "create:user",
+      targetId: "user-student-001",
+      timestamp: "2026-03-12T10:00:00",
+      detail: "教师创建了学生账号 2026001。",
+    },
+    {
+      id: "log-003",
+      userId: "user-teacher-001",
+      action: "create:user",
+      targetId: "user-student-002",
+      timestamp: "2026-03-18T09:30:00",
+      detail: "教师创建了学生账号 2026015。",
+    },
+    {
+      id: "log-004",
+      userId: "user-teacher-001",
+      action: "reset:password",
+      targetId: "user-student-001",
+      timestamp: "2026-04-02T09:00:00",
+      detail: "教师重置了学生账号的密码。",
+    },
+    {
+      id: "log-005",
+      userId: "user-teacher-001",
+      action: "freeze:user",
+      targetId: "user-student-disabled",
+      timestamp: "2026-04-03T16:00:00",
+      detail: "教师将账号状态调整为已冻结。",
+    },
+    {
+      id: "log-006",
+      userId: "user-multi-001",
+      action: "switch:role",
+      targetId: "user-multi-001",
+      timestamp: "2026-04-06T18:10:00",
+      detail: "多角色账号切换为教师视图。",
+    },
+  ];
+}
+
+function mergeSeedUsers(existingUsers, seedUsers) {
+  const usedExistingIds = new Set();
+
+  const mergedSeedUsers = seedUsers.map((seedUser) => {
+    const existingUser = existingUsers.find((user) => user.id === seedUser.id || user.loginName === seedUser.loginName);
+
+    if (!existingUser) {
+      return seedUser;
+    }
+
+    usedExistingIds.add(existingUser.id);
+
+    return {
+      ...seedUser,
+      ...existingUser,
+      advisorId: existingUser.advisorId ?? seedUser.advisorId ?? "",
+    };
+  });
+
+  const customUsers = existingUsers.filter((user) => !usedExistingIds.has(user.id));
+  return [...mergedSeedUsers, ...customUsers];
+}
+
+function mergeSeedAuditLogs(existingLogs, seedLogs) {
+  const byId = new Map(existingLogs.map((log) => [log.id, log]));
+  const mergedSeedLogs = seedLogs.map((seedLog) => byId.get(seedLog.id) ?? seedLog);
+  const customLogs = existingLogs.filter((log) => !seedLogs.some((seedLog) => seedLog.id === log.id));
+  return [...mergedSeedLogs, ...customLogs].slice(0, 120);
+}
+
+function readStorage(storage, key, fallbackValue) {
+  try {
+    const raw = storage.getItem(key);
+    return raw ? JSON.parse(raw) : cloneData(fallbackValue);
+  } catch (error) {
+    return cloneData(fallbackValue);
+  }
+}
+
+function writeStorage(storage, key, value) {
+  storage.setItem(key, JSON.stringify(value));
+}
+
+function cloneData(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function getUsers() {
+  return readStorage(localStorage, STORAGE_KEYS.users, []);
+}
+
+function saveUsers(users) {
+  writeStorage(localStorage, STORAGE_KEYS.users, users);
+}
+
+function getAuditLogs() {
+  return readStorage(localStorage, STORAGE_KEYS.auditLogs, []);
+}
+
+function saveAuditLogs(logs) {
+  writeStorage(localStorage, STORAGE_KEYS.auditLogs, logs);
+}
+
+function getActiveSessions() {
+  return readStorage(localStorage, STORAGE_KEYS.activeSessions, {});
+}
+
+function saveActiveSessions(activeSessions) {
+  writeStorage(localStorage, STORAGE_KEYS.activeSessions, activeSessions);
+}
+
+function getCurrentSession() {
+  return readStorage(sessionStorage, SESSION_KEYS.currentSession, null);
+}
+
+function setCurrentSession(session) {
+  writeStorage(sessionStorage, SESSION_KEYS.currentSession, session);
+}
+
+function clearCurrentSession(options = { removeRegistry: true }) {
+  const session = getCurrentSession();
+
+  if (session && options.removeRegistry !== false) {
+    const activeSessions = getActiveSessions();
+    const activeSession = activeSessions[session.userId];
+
+    if (activeSession && activeSession.sessionId === session.sessionId) {
+      delete activeSessions[session.userId];
+      saveActiveSessions(activeSessions);
+    }
+  }
+
+  sessionStorage.removeItem(SESSION_KEYS.currentSession);
+}
+
+function createId(prefix) {
+  return `${prefix}-${Math.random().toString(36).slice(2, 8)}${Date.now()
+    .toString(36)
+    .slice(-5)}`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function getInitials(name) {
+  const safe = String(name ?? "").trim();
+  return safe ? safe.slice(0, 1) : "D";
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return "未记录";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "未记录";
+  }
+
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function passwordIsValid(password) {
+  return /^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(password);
+}
+
+function appendAuditLog({ userId, action, targetId, detail }) {
+  const logs = getAuditLogs();
+  logs.unshift({
+    id: createId("log"),
+    userId,
+    action,
+    targetId,
+    timestamp: new Date().toISOString(),
+    detail,
+  });
+  saveAuditLogs(logs.slice(0, 120));
+}
+
+function getHashPath() {
+  const raw = location.hash.replace(/^#/, "");
+  return raw ? raw : "/";
+}
+
+function navigate(path) {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  location.hash = normalized;
+}
+
+function setFlash(message, tone = "info") {
+  writeStorage(sessionStorage, SESSION_KEYS.flash, { message, tone });
+}
+
+function consumeFlash() {
+  const flash = readStorage(sessionStorage, SESSION_KEYS.flash, null);
+  sessionStorage.removeItem(SESSION_KEYS.flash);
+  return flash;
+}
+
+function resolveRoute(path) {
+  if (path === "/" || path === "") {
+    return { name: "root" };
+  }
+
+  if (path === "/login") {
+    return { name: "login", public: true };
+  }
+
+  if (path === "/register") {
+    return { name: "register", public: true };
+  }
+
+  if (path === "/forgot-password") {
+    return { name: "forgot-password", public: true };
+  }
+
+  if (path === "/dashboard") {
+    return { name: "dashboard", requiresAuth: true };
+  }
+
+  if (path === "/users") {
+    return {
+      name: "users",
+      requiresAuth: true,
+      allowedRoles: ["Teacher", "Admin"],
+    };
+  }
+
+  if (path === "/users/new") {
+    return {
+      name: "user-create",
+      requiresAuth: true,
+      allowedRoles: ["Teacher", "Admin"],
+    };
+  }
+
+  const userEditMatch = path.match(/^\/users\/([^/]+)\/edit$/);
+
+  if (userEditMatch) {
+    return {
+      name: "user-edit",
+      requiresAuth: true,
+      allowedRoles: ["Teacher", "Admin"],
+      params: { userId: userEditMatch[1] },
+    };
+  }
+
+  const userDetailMatch = path.match(/^\/users\/([^/]+)$/);
+
+  if (userDetailMatch) {
+    return {
+      name: "user-detail",
+      requiresAuth: true,
+      allowedRoles: ["Teacher", "Admin"],
+      params: { userId: userDetailMatch[1] },
+    };
+  }
+
+  if (path === "/profile") {
+    return {
+      name: "profile",
+      requiresAuth: true,
+    };
+  }
+
+  if (path === "/403") {
+    return {
+      name: "forbidden",
+      requiresAuth: true,
+    };
+  }
+
+  return { name: "not-found", requiresAuth: true };
+}
+
+function getCurrentUserFromSession(session, users) {
+  if (!session) {
+    return null;
+  }
+
+  return users.find((user) => user.id === session.userId) ?? null;
+}
+
+function validateSessionState() {
+  const session = getCurrentSession();
+
+  if (!session) {
+    return null;
+  }
+
+  const users = getUsers();
+  const user = users.find((item) => item.id === session.userId);
+
+  if (!user) {
+    setFlash("当前账号已不存在，请重新登录。", "warning");
+    clearCurrentSession({ removeRegistry: false });
+    return null;
+  }
+
+  if (user.status !== "active") {
+    setFlash("当前账号状态已变化，请联系系统管理员。", "warning");
+    clearCurrentSession({ removeRegistry: false });
+    return null;
+  }
+
+  if (!user.roles.includes(session.currentRole)) {
+    session.currentRole = user.primaryRole || user.roles[0];
+    setCurrentSession(session);
+  }
+
+  const activeSessions = getActiveSessions();
+  const activeSession = activeSessions[user.id];
+
+  if (!activeSession || activeSession.sessionId !== session.sessionId) {
+    setFlash("账号已在其他位置登录，请重新认证。", "warning");
+    clearCurrentSession({ removeRegistry: false });
+    return null;
+  }
+
+  return session;
+}
+
+function showToast(message, tone = "success") {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.dataset.tone = tone;
+  toast.textContent = message;
+  toastRoot.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 3200);
+}
+
+function getStats(users) {
+  const active = users.filter((user) => user.status === "active").length;
+  const students = users.filter((user) => user.roles.includes("Student") && user.primaryRole === "Student").length;
+  const teachers = users.filter((user) => user.roles.includes("Teacher") && user.primaryRole === "Teacher").length;
+  const admins = users.filter((user) => user.roles.includes("Admin") && user.primaryRole === "Admin").length;
+  const multiRole = users.filter((user) => user.roles.length > 1).length;
+  const lockedOrDisabled = users.filter((user) => user.status !== "active").length;
+
+  return {
+    total: users.length,
+    active,
+    students,
+    teachers,
+    admins,
+    multiRole,
+    lockedOrDisabled,
+  };
+}
+
+function getPermissionsForRole(role) {
+  return permissionMap[role] ?? [];
+}
+
+function hasPermission(context, permission) {
+  return context.permissions.includes(permission);
+}
+
+function isTeacherManagedStudent(user, teacherId) {
+  return Boolean(user && user.primaryRole === "Student" && user.advisorId === teacherId);
+}
+
+function getManagedStudentsForTeacher(teacherId, users) {
+  return users.filter((user) => isTeacherManagedStudent(user, teacherId));
+}
+
+function getVisibleUsersForRole(role, currentUser, users) {
+  if (!currentUser) {
+    return [];
+  }
+
+  if (role === "Admin") {
+    return [...users].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  }
+
+  if (role === "Teacher") {
+    return [
+      currentUser,
+      ...getManagedStudentsForTeacher(currentUser.id, users).filter((user) => user.id !== currentUser.id),
+    ].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  }
+
+  return [currentUser];
+}
+
+function getManageableUsersForRole(role, currentUser, users) {
+  if (!currentUser) {
+    return [];
+  }
+
+  if (role === "Admin") {
+    return users;
+  }
+
+  if (role === "Teacher") {
+    return getManagedStudentsForTeacher(currentUser.id, users);
+  }
+
+  return [];
+}
+
+function canViewUserByScope(role, currentUser, targetUser) {
+  if (!currentUser || !targetUser) {
+    return false;
+  }
+
+  if (role === "Admin") {
+    return true;
+  }
+
+  if (role === "Teacher") {
+    return targetUser.id === currentUser.id || isTeacherManagedStudent(targetUser, currentUser.id);
+  }
+
+  return targetUser.id === currentUser.id;
+}
+
+function canManageUserByScope(role, currentUser, targetUser) {
+  if (!currentUser || !targetUser) {
+    return false;
+  }
+
+  if (role === "Admin") {
+    return true;
+  }
+
+  if (role === "Teacher") {
+    return isTeacherManagedStudent(targetUser, currentUser.id);
+  }
+
+  return false;
+}
+
+function getUserScopeLabel(role) {
+  if (role === "Admin") {
+    return "全平台账号";
+  }
+
+  if (role === "Teacher") {
+    return "本人及所属学生";
+  }
+
+  return "仅本人";
+}
+
+function getRoleEntrySummary(role) {
+  if (role === "Admin") {
+    return "负责全平台账号、角色与状态管理";
+  }
+
+  if (role === "Teacher") {
+    return "负责本人及所属学生账号维护";
+  }
+
+  return "查看个人资料与当前账号状态";
+}
+
+function getAssignableRoles(currentRole) {
+  if (currentRole === "Admin") {
+    return ["Student", "Teacher", "Admin"];
+  }
+
+  if (currentRole === "Teacher") {
+    return ["Student"];
+  }
+
+  return [];
+}
+
+function getTeacherOptions(users) {
+  return users
+    .filter((user) => user.roles.includes("Teacher") && user.status === "active")
+    .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+}
+
+function getAdvisorName(advisorId, users) {
+  if (!advisorId) {
+    return "未分配";
+  }
+
+  return users.find((user) => user.id === advisorId)?.name ?? "未分配";
+}
+
+function filterUsers(users, filters) {
+  return [...users]
+    .filter((user) => {
+      const query = filters.query.trim().toLowerCase();
+
+      if (!query) {
+        return true;
+      }
+
+      return [user.name, user.loginName, user.email, user.classId, user.department]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+    })
+    .filter((user) => (filters.role === "all" ? true : user.roles.includes(filters.role)))
+    .filter((user) => (filters.status === "all" ? true : user.status === filters.status))
+    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+}
+
+function getActionLabel(action) {
+  const labels = {
+    "create:user": "创建用户",
+    "update:user": "更新用户资料",
+    "freeze:user": "冻结账号",
+    "unfreeze:user": "恢复账号",
+    "reset:password": "重置密码",
+    login: "登录系统",
+    logout: "退出登录",
+    register: "学生注册",
+    "switch:role": "切换角色",
+    "update:profile": "更新个人资料",
+  };
+
+  return labels[action] ?? action;
+}
+
+function createRenderContext({ route, session, currentUser, users, flash }) {
+  const visibleUsers = getVisibleUsersForRole(session.currentRole, currentUser, users);
+  const manageableUsers = getManageableUsersForRole(session.currentRole, currentUser, users);
+
+  return {
+    route,
+    session,
+    currentUser,
+    users,
+    visibleUsers,
+    manageableUsers,
+    auditLogs: getAuditLogs(),
+    role: session.currentRole,
+    permissions: getPermissionsForRole(session.currentRole),
+    flash,
+    scopeLabel: getUserScopeLabel(session.currentRole),
+    roleEntrySummary: getRoleEntrySummary(session.currentRole),
+  };
+}
