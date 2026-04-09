@@ -66,7 +66,7 @@ function renderAdminDashboard(ctx) {
           <p>用于区分教师端的业务维护与管理员端的全局治理。</p>
           <div class="quick-grid">
             ${renderQuickCard("户", "全量用户", "查看教师、学生与管理员全部账号。")}
-            ${renderQuickCard("角", "角色分配", "配置默认角色与账号可见范围。")}
+            ${renderQuickCard("角", "角色分配", "配置账号角色与管理范围。")}
             ${renderQuickCard("安", "状态维护", "处理锁定、冻结与密码重置。")}
             ${renderQuickCard("审", "操作留痕", "保留关键操作记录，便于后续追溯。")}
           </div>
@@ -193,7 +193,7 @@ function renderStudentDashboard(ctx) {
             在这里查看个人资料、账号状态、最近登录与常用服务入口。
           </p>
           <div class="panel-note">
-            如账号拥有多个角色，可在顶部切换对应视图。
+            页面内容会根据当前账号角色自动匹配对应工作区。
           </div>
         </div>
         <div class="hero-side">
@@ -224,7 +224,7 @@ function renderStudentDashboard(ctx) {
             ${renderQuickCard("资", "个人资料", "维护姓名、邮箱、班级与联系方式。")}
             ${renderQuickCard("安", "账号安全", "查看登录状态与密码重置提示。")}
             ${renderQuickCard("服", "服务入口", "从工作台进入常用功能。")}
-            ${renderQuickCard("角", "角色视图", "多角色账号可切换工作区。")}
+            ${renderQuickCard("息", "资料核对", "快速确认账号状态、班级与联系方式。")}
           </div>
         </div>
         <div class="card">
@@ -245,10 +245,10 @@ function renderStudentDashboard(ctx) {
               </div>
             </div>
             <div class="support-item">
-              <span class="icon-badge">角</span>
+              <span class="icon-badge">视</span>
               <div>
-                <strong>角色切换</strong>
-                <div class="muted">多角色账号可根据当前任务切换视图。</div>
+                <strong>角色视图</strong>
+                <div class="muted">不同账号登录后会自动进入对应的功能视图。</div>
               </div>
             </div>
           </div>
@@ -257,3 +257,4 @@ function renderStudentDashboard(ctx) {
     `,
   };
 }
+

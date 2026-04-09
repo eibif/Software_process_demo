@@ -60,7 +60,6 @@ const demoAccounts = [
   { role: "教师账号", loginName: "teacher01", password: "Demo12345" },
   { role: "学生账号", loginName: "2026001", password: "Demo12345" },
   { role: "学生账号", loginName: "2026015", password: "Demo12345" },
-  { role: "多角色账号", loginName: "duanxun", password: "Demo12345" },
   { role: "锁定账号", loginName: "teacher-lock", password: "Demo12345" },
 ];
 
@@ -96,11 +95,11 @@ function ensureSessionValue(key, fallbackValue) {
 function seedDemoData() {
   const seedUsers = createSeedUsers();
   const existingUsers = readStorage(localStorage, STORAGE_KEYS.users, null);
-  writeStorage(localStorage, STORAGE_KEYS.users, existingUsers ? mergeSeedUsers(existingUsers, seedUsers) : seedUsers);
+  writeStorage(localStorage, STORAGE_KEYS.users, normalizeUsers(existingUsers ? mergeSeedUsers(existingUsers, seedUsers) : seedUsers));
 
   const seedLogs = createSeedAuditLogs();
   const existingLogs = readStorage(localStorage, STORAGE_KEYS.auditLogs, null);
-  writeStorage(localStorage, STORAGE_KEYS.auditLogs, existingLogs ? mergeSeedAuditLogs(existingLogs, seedLogs) : seedLogs);
+  writeStorage(localStorage, STORAGE_KEYS.auditLogs, normalizeAuditLogs(existingLogs ? mergeSeedAuditLogs(existingLogs, seedLogs) : seedLogs));
 
   if (!localStorage.getItem(STORAGE_KEYS.activeSessions)) {
     writeStorage(localStorage, STORAGE_KEYS.activeSessions, {});
@@ -194,23 +193,7 @@ function createSeedUsers() {
       createdAt: "2026-02-21T08:30:00",
       updatedAt: "2026-04-03T16:00:00",
     },
-    {
-      id: "user-multi-001",
-      loginName: "duanxun",
-      password: "Demo12345",
-      name: "段勋",
-      roles: ["Teacher", "Student"],
-      primaryRole: "Teacher",
-      email: "duanxun@examcloud.edu.cn",
-      phone: "13700006788",
-      classId: "研究生实验班",
-      department: "智能系统实验室",
-      advisorId: "",
-      status: "active",
-      lastLoginAt: "2026-04-06T18:10:00",
-      createdAt: "2026-02-18T09:20:00",
-      updatedAt: "2026-04-06T18:10:00",
-    },
+
     {
       id: "user-teacher-locked",
       loginName: "teacher-lock",
@@ -273,14 +256,7 @@ function createSeedAuditLogs() {
       timestamp: "2026-04-03T16:00:00",
       detail: "教师将账号状态调整为已冻结。",
     },
-    {
-      id: "log-006",
-      userId: "user-multi-001",
-      action: "switch:role",
-      targetId: "user-multi-001",
-      timestamp: "2026-04-06T18:10:00",
-      detail: "多角色账号切换为教师视图。",
-    },
+
   ];
 }
 
@@ -312,6 +288,24 @@ function mergeSeedAuditLogs(existingLogs, seedLogs) {
   const mergedSeedLogs = seedLogs.map((seedLog) => byId.get(seedLog.id) ?? seedLog);
   const customLogs = existingLogs.filter((log) => !seedLogs.some((seedLog) => seedLog.id === log.id));
   return [...mergedSeedLogs, ...customLogs].slice(0, 120);
+}
+
+function normalizeUsers(users) {
+  return users.map((user) => {
+    const fallbackRole = user.primaryRole || user.roles?.[0] || "Student";
+    const role = roleLabels[fallbackRole] ? fallbackRole : "Student";
+
+    return {
+      ...user,
+      roles: [role],
+      primaryRole: role,
+      advisorId: role === "Student" ? user.advisorId ?? "" : "",
+    };
+  });
+}
+
+function normalizeAuditLogs(logs) {
+  return logs.filter((log) => log.action !== "switch:role");
 }
 
 function readStorage(storage, key, fallbackValue) {
@@ -797,3 +791,5 @@ function createRenderContext({ route, session, currentUser, users, flash }) {
     roleEntrySummary: getRoleEntrySummary(session.currentRole),
   };
 }
+
+

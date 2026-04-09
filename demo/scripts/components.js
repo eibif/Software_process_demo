@@ -58,12 +58,15 @@ function renderSelectOptions(options, selectedValue) {
     .join("");
 }
 
-function renderRoleCheckbox(role, checked, helpText) {
+function renderRoleOption(role, checked, helpText) {
   return `
-    <label class="checkbox-card">
-      <input type="checkbox" name="roles" value="${role}" ${checked ? "checked" : ""} />
-      <span class="checkbox-label__text">
-        <strong>${roleLabels[role]}</strong>
+    <label class="role-option">
+      <input class="role-option__input" type="radio" name="role" value="${role}" ${checked ? "checked" : ""} />
+      <span class="role-option__content">
+        <span class="role-option__title-row">
+          <strong>${roleLabels[role]}</strong>
+          <span class="role-option__indicator" aria-hidden="true"></span>
+        </span>
         <small>${helpText}</small>
       </span>
     </label>
@@ -110,9 +113,10 @@ function renderSafetyNotices(count) {
         <span class="icon-badge">记</span>
         <div>
           <strong>关键操作留痕</strong>
-          <div class="muted">登录、资料修改、角色切换与密码重置均会记录。</div>
+          <div class="muted">登录、资料修改、状态调整与密码重置均会记录。</div>
         </div>
       </div>
     </div>
   `;
 }
+

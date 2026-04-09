@@ -295,11 +295,13 @@ function handleUserFormSubmit(form) {
     classId: String(formData.get("classId") || "").trim(),
     department: String(formData.get("department") || "").trim(),
     advisorId: String(formData.get("advisorId") || "").trim(),
-    primaryRole: String(formData.get("primaryRole") || "").trim(),
+    primaryRole: String(formData.get("role") || "").trim(),
     status: String(formData.get("status") || "active").trim(),
     password: String(formData.get("password") || "").trim(),
-    roles: Array.from(form.querySelectorAll('input[name="roles"]:checked')).map((item) => item.value),
+    roles: [],
   };
+
+  payload.roles = payload.primaryRole ? [payload.primaryRole] : [];
 
   if (currentRole === "Teacher") {
     payload = {
@@ -316,13 +318,8 @@ function handleUserFormSubmit(form) {
     return;
   }
 
-  if (!payload.roles.length) {
-    showToast("请至少选择一个角色。", "warning");
-    return;
-  }
-
-  if (!payload.roles.includes(payload.primaryRole)) {
-    showToast("默认角色必须属于已勾选角色。", "warning");
+  if (!payload.primaryRole) {
+    showToast("请选择一个角色。", "warning");
     return;
   }
 
@@ -721,4 +718,5 @@ function resetLocalData() {
   setFlash("系统数据已恢复到初始状态。", "success");
   navigate("/login");
 }
+
 

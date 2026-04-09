@@ -153,7 +153,7 @@ function renderUserDetailPage(ctx, user) {
           </div>
           <div class="detail-list" style="margin-top:18px">
             ${renderInfoItem("账号状态", renderStatusBadge(user.status))}
-            ${renderInfoItem("主角色", roleLabels[user.primaryRole])}
+            ${renderInfoItem("角色", roleLabels[user.primaryRole])}
             ${renderInfoItem("班级", escapeHtml(user.classId || "未设置"))}
             ${renderInfoItem("部门", escapeHtml(user.department || "未设置"))}
             ${user.primaryRole === "Student" ? renderInfoItem("负责教师", escapeHtml(getAdvisorName(user.advisorId, ctx.users))) : ""}
@@ -210,7 +210,7 @@ function renderUserFormPage(ctx, user) {
     });
 
   const roleOptions = getAssignableRoles(ctx.role);
-  const primaryRoleOptions = roleOptions.map((role) => ({ value: role, label: roleLabels[role] }));
+  const resolvedRole = resolvedUser.primaryRole || resolvedUser.roles?.[0] || roleOptions[0] || "Student";
   const advisorOptions = [{ value: "", label: "未分配" }].concat(
     teacherOptions.map((teacher) => ({ value: teacher.id, label: `${teacher.name} · ${teacher.loginName}` }))
   );
@@ -252,31 +252,24 @@ function renderUserFormPage(ctx, user) {
                 <div class="form-row">
                   <span class="field-label">角色分配</span>
                   <div class="role-picker">
-                    ${renderRoleCheckbox("Student", resolvedUser.roles.includes("Student"), "适用于学生个人工作台与考试入口")}
-                    ${renderRoleCheckbox("Teacher", resolvedUser.roles.includes("Teacher"), "适用于教师管理工作台")}
-                    ${renderRoleCheckbox("Admin", resolvedUser.roles.includes("Admin"), "适用于全平台用户与角色管理")}
+                    ${renderRoleOption("Student", resolvedRole === "Student", "适用于学生个人工作台与考试入口")}
+                    ${renderRoleOption("Teacher", resolvedRole === "Teacher", "适用于教师管理工作台")}
+                    ${renderRoleOption("Admin", resolvedRole === "Admin", "适用于全平台用户与角色管理")}
                   </div>
+                  <div class="hint-text">每个账号在当前版本中只分配一个角色。</div>
                 </div>
-                <div class="form-row--double">
-                  <div class="form-row">
-                    <label for="user-primaryRole">默认角色</label>
-                    <select id="user-primaryRole" name="primaryRole">
-                      ${renderSelectOptions(primaryRoleOptions, resolvedUser.primaryRole)}
-                    </select>
-                  </div>
-                  <div class="form-row">
-                    <label for="user-status">账号状态</label>
-                    <select id="user-status" name="status">
-                      ${renderSelectOptions(
-                        [
-                          { value: "active", label: "正常" },
-                          { value: "locked", label: "已锁定" },
-                          { value: "disabled", label: "已冻结" },
-                        ],
-                        resolvedUser.status
-                      )}
-                    </select>
-                  </div>
+                <div class="form-row">
+                  <label for="user-status">账号状态</label>
+                  <select id="user-status" name="status">
+                    ${renderSelectOptions(
+                      [
+                        { value: "active", label: "正常" },
+                        { value: "locked", label: "已锁定" },
+                        { value: "disabled", label: "已冻结" },
+                      ],
+                      resolvedUser.status
+                    )}
+                  </select>
                 </div>
               `
               : ""
@@ -320,3 +313,4 @@ function renderUserFormPage(ctx, user) {
     `,
   };
 }
+
